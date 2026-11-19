@@ -1,0 +1,1352 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PLANET | מערכת ניהול מלאי טכני בזמן אמת - v2</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg-main: #090d16;
+    --bg-card: #111827;
+    --bg-card-hover: #1e293b;
+    --bg-input: #0b1120;
+    --border-color: #1f2937;
+    --border-highlight: #334155;
+    --text-primary: #f8fafc;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --accent: #38bdf8;
+    --accent-hover: #0284c7;
+    --accent-indigo: #6366f1;
+    --success: #10b981;
+    --success-bg: rgba(16, 185, 129, 0.14);
+    --warning: #f59e0b;
+    --warning-bg: rgba(245, 158, 11, 0.14);
+    --danger: #ef4444;
+    --danger-bg: rgba(239, 68, 68, 0.14);
+    --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    --font-mono: 'JetBrains Mono', 'Fira Code', Consolas, monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    font-family: var(--font-sans);
+    font-size: 13.5px;
+    line-height: 1.45;
+    min-height: 100vh;
+  }
+
+  /* Header */
+  .top-bar {
+    background: rgba(17, 24, 39, 0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border-highlight);
+    padding: 12px 24px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 200;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .brand-area { display: flex; align-items: center; gap: 14px; }
+  .brand-logo {
+    background: linear-gradient(135deg, var(--accent), var(--accent-indigo));
+    color: #fff;
+    font-weight: 900;
+    font-size: 18px;
+    letter-spacing: 1.5px;
+    padding: 7px 14px;
+    border-radius: 8px;
+    box-shadow: 0 2px 12px rgba(56, 189, 248, 0.25);
+  }
+  .brand-title h1 { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  .brand-title p { font-size: 11.5px; color: var(--text-secondary); }
+
+  .status-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--success);
+    display: inline-block;
+    box-shadow: 0 0 8px var(--success);
+  }
+
+  .action-bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+  .user-switch {
+    background: var(--bg-input);
+    border: 1px solid var(--border-highlight);
+    color: var(--text-primary);
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  .btn {
+    background: var(--bg-card-hover);
+    border: 1px solid var(--border-highlight);
+    color: var(--text-primary);
+    padding: 7px 13px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.15s ease;
+  }
+  .btn:hover { border-color: var(--accent); background: #26354d; }
+  .btn-primary { background: var(--accent); color: #090d16; border-color: var(--accent); font-weight: 700; }
+  .btn-primary:hover { background: #7dd3fc; border-color: #7dd3fc; }
+  .btn-indigo { background: var(--accent-indigo); color: #fff; border-color: var(--accent-indigo); }
+  .btn-indigo:hover { background: #818cf8; }
+  .btn-danger { background: rgba(239,68,68,0.15); color: #fca5a5; border-color: rgba(239,68,68,0.35); }
+  .btn-danger:hover { background: rgba(239,68,68,0.28); border-color: var(--danger); }
+
+  .container { max-width: 1680px; margin: 0 auto; padding: 20px 24px; }
+
+  /* KPIs */
+  .kpi-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .kpi-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    padding: 14px 18px;
+    position: relative;
+    overflow: hidden;
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; right: 0; width: 4px; height: 100%;
+    background: var(--accent);
+  }
+  .kpi-card.success::before { background: var(--success); }
+  .kpi-card.warn::before { background: var(--warning); }
+  .kpi-card.indigo::before { background: var(--accent-indigo); }
+  .kpi-label { font-size: 11.5px; color: var(--text-secondary); margin-bottom: 4px; }
+  .kpi-value { font-size: 22px; font-weight: 800; font-family: var(--font-mono); color: var(--text-primary); }
+  .kpi-sub { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
+
+  /* Tabs */
+  .nav-tabs {
+    display: flex; gap: 6px; border-bottom: 1px solid var(--border-highlight);
+    margin-bottom: 16px; overflow-x: auto;
+  }
+  .tab-btn {
+    background: transparent; border: none; color: var(--text-secondary);
+    padding: 10px 18px; font-size: 13.5px; font-weight: 600; cursor: pointer;
+    border-bottom: 3px solid transparent; display: flex; align-items: center; gap: 8px;
+    white-space: nowrap;
+  }
+  .tab-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.02); }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); background: rgba(56,189,248,0.06); }
+  .badge-cnt {
+    background: rgba(255,255,255,0.1); color: var(--text-primary);
+    padding: 1px 7px; border-radius: 99px; font-size: 11px; font-family: var(--font-mono);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Toolbar */
+  .toolbar {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 10px; padding: 12px 16px; margin-bottom: 14px;
+    display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between;
+  }
+  .filter-group { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; flex: 1; }
+  .search-input, .select-input, .form-input {
+    background: var(--bg-input); border: 1px solid var(--border-highlight);
+    color: var(--text-primary); padding: 8px 12px; border-radius: 6px;
+    font-size: 13px; outline: none;
+  }
+  .search-input { min-width: 260px; }
+  .search-input:focus, .select-input:focus, .form-input:focus {
+    border-color: var(--accent); box-shadow: 0 0 0 2px rgba(56,189,248,0.18);
+  }
+
+  .pill-group {
+    display: flex; background: var(--bg-input); border: 1px solid var(--border-highlight);
+    border-radius: 6px; overflow: hidden;
+  }
+  .pill-btn {
+    background: transparent; border: none; color: var(--text-secondary);
+    padding: 7px 12px; font-size: 12px; font-weight: 600; cursor: pointer;
+  }
+  .pill-btn.active { background: var(--accent); color: #090d16; font-weight: 700; }
+
+  /* Table */
+  .table-wrap {
+    background: var(--bg-card); border: 1px solid var(--border-color);
+    border-radius: 10px; overflow: auto; max-height: 70vh;
+  }
+  table { width: 100%; border-collapse: collapse; text-align: right; }
+  thead th {
+    background: #0d1322; color: var(--text-secondary); font-weight: 600; font-size: 11.5px;
+    padding: 11px 8px; border-bottom: 2px solid var(--border-highlight);
+    position: sticky; top: 0; z-index: 20; cursor: pointer; user-select: none; white-space: nowrap;
+  }
+  thead th:hover { color: var(--text-primary); background: #151f38; }
+  tbody tr { border-bottom: 1px solid rgba(31,41,55,0.7); transition: background 0.1s; }
+  tbody tr:hover { background: rgba(30,41,59,0.7); }
+  tbody tr.zero-row { opacity: 0.58; }
+  tbody tr.zero-row:hover { opacity: 0.95; }
+  tbody tr.modified-row { background: rgba(56, 189, 248, 0.06); }
+  td { padding: 7px 8px; vertical-align: middle; }
+
+  .mono { font-family: var(--font-mono); font-size: 12px; }
+  .val-ltr { font-family: var(--font-mono); font-weight: 600; direction: ltr; text-align: left; }
+
+  .part-chip {
+    font-family: var(--font-mono); font-size: 11.5px;
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12);
+    padding: 2px 7px; border-radius: 4px; cursor: pointer; display: inline-block;
+  }
+  .part-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  .cat-badge {
+    font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+  }
+  .cat-equip { background: rgba(59,130,246,0.15); color: #93c5fd; border: 1px solid rgba(59,130,246,0.3); }
+  .cat-lamps { background: rgba(245,158,11,0.15); color: #fcd34d; border: 1px solid rgba(245,158,11,0.3); }
+  .cat-popcorn { background: rgba(236,72,153,0.15); color: #f9a8d4; border: 1px solid rgba(236,72,153,0.3); }
+
+  /* Interactive Quantity Cell */
+  .qty-box {
+    display: inline-flex; align-items: center; justify-content: center; gap: 3px;
+    background: rgba(15, 23, 42, 0.7); border: 1px solid transparent;
+    border-radius: 6px; padding: 2px 4px; min-width: 68px;
+    transition: all 0.12s;
+  }
+  tr:hover .qty-box { border-color: var(--border-highlight); background: #0b1120; }
+  .qty-btn {
+    width: 19px; height: 19px; border-radius: 4px; border: none;
+    background: rgba(255,255,255,0.06); color: var(--text-secondary);
+    font-weight: 700; font-size: 12px; line-height: 1; cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center;
+    opacity: 0.25; transition: all 0.12s;
+  }
+  tr:hover .qty-btn { opacity: 1; }
+  .qty-btn.plus:hover { background: var(--success); color: #052e16; }
+  .qty-btn.minus:hover { background: var(--danger); color: #fff; }
+  .qty-num {
+    font-family: var(--font-mono); font-size: 12.5px; font-weight: 700;
+    min-width: 22px; text-align: center; cursor: pointer; padding: 1px 3px; border-radius: 3px;
+  }
+  .qty-num.pos { color: #34d399; background: rgba(16,185,129,0.14); }
+  .qty-num.zero { color: #475569; font-weight: 400; }
+  .qty-num:hover { outline: 1px solid var(--accent); }
+
+  .total-pill {
+    font-family: var(--font-mono); font-weight: 800; font-size: 13px;
+    padding: 3px 9px; border-radius: 5px; display: inline-block; min-width: 34px; text-align: center;
+  }
+  .total-pill.pos { background: rgba(56,189,248,0.16); color: var(--accent); border: 1px solid rgba(56,189,248,0.3); }
+  .total-pill.zero { color: #475569; }
+
+  .row-actions { display: flex; gap: 4px; justify-content: center; }
+  .icon-btn {
+    background: rgba(255,255,255,0.05); border: 1px solid var(--border-highlight);
+    color: var(--text-secondary); border-radius: 4px; padding: 3px 6px;
+    cursor: pointer; font-size: 12px;
+  }
+  .icon-btn:hover { color: var(--text-primary); border-color: var(--accent); background: rgba(56,189,248,0.12); }
+
+  /* Modals */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.72);
+    backdrop-filter: blur(4px); z-index: 500;
+    display: none; align-items: center; justify-content: center; padding: 16px;
+  }
+  .modal-backdrop.open { display: flex; }
+  .modal {
+    background: var(--bg-card); border: 1px solid var(--border-highlight);
+    border-radius: 12px; width: 100%; max-width: 540px;
+    box-shadow: 0 20px 50px rgba(0,0,0,0.6); overflow: hidden;
+  }
+  .modal-header {
+    padding: 16px 20px; background: #0d1322; border-bottom: 1px solid var(--border-highlight);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .modal-header h3 { font-size: 15px; font-weight: 700; color: var(--text-primary); }
+  .modal-close { background: none; border: none; color: var(--text-secondary); font-size: 18px; cursor: pointer; }
+  .modal-body { padding: 20px; display: flex; flex-direction: column; gap: 14px; }
+  .modal-footer {
+    padding: 14px 20px; background: #0d1322; border-top: 1px solid var(--border-highlight);
+    display: flex; justify-content: flex-end; gap: 10px;
+  }
+
+  .form-row { display: flex; flex-direction: column; gap: 5px; }
+  .form-row label { font-size: 12px; color: var(--text-secondary); font-weight: 600; }
+  .form-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .form-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+  /* Toast */
+  #toast {
+    position: fixed; bottom: 22px; left: 22px;
+    background: var(--accent); color: #090d16; padding: 10px 18px;
+    border-radius: 8px; font-weight: 700; font-size: 13px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.45);
+    transform: translateY(80px); opacity: 0; transition: all 0.25s ease; z-index: 999;
+  }
+  #toast.show { transform: translateY(0); opacity: 1; }
+</style>
+</head>
+<body>
+
+<header class="top-bar">
+  <div class="brand-area">
+    <div class="brand-logo">PLANET</div>
+    <div class="brand-title">
+      <h1><span class="status-dot" title="מסד נתונים מקומי פעיל"></span> מערכת ניהול מלאי טכני בזמן אמת (v2)</h1>
+      <p id="dbStatusText">מסד נתונים פעיל | שמירה אוטומטית בדפדפן (LocalStorage) + ייבוא/ייצוא מלא</p>
+    </div>
+  </div>
+
+  <div class="action-bar">
+    <label style="font-size:12px;color:var(--text-secondary);">משתמש פעיל:</label>
+    <select id="activeUserSelect" class="user-switch" onchange="saveUserPref()">
+      <option value="נציג מחלקה טכנית">👤 נציג מחלקה טכנית</option>
+      <option value="מנהל מחלקה טכנית">👨‍💼 מנהל מחלקה טכנית</option>
+    </select>
+
+    <button class="btn btn-primary" onclick="openAddItemModal()">➕ הוסף פריט חדש</button>
+    <button class="btn btn-indigo" onclick="openTransferModal()">⇄ העברה בין סניפים</button>
+    <button class="btn" onclick="document.getElementById('fileUploadInput').click()">📂 טען קובץ (Excel / JSON)</button>
+    <input type="file" id="fileUploadInput" accept=".xlsx,.xls,.json" style="display:none" onchange="handleExternalFile(event)">
+    <button class="btn" onclick="exportStateJSON()">💾 גיבוי מצב (JSON)</button>
+    <button class="btn" onclick="exportToExcelCSV()">📊 ייצוא לאקסל (CSV)</button>
+    <button class="btn btn-danger" onclick="resetToFactory()">↺ איפוס למקור</button>
+  </div>
+</header>
+
+<main class="container">
+  <!-- Dynamic KPIs -->
+  <section class="kpi-grid">
+    <div class="kpi-card">
+      <div class="kpi-label">שווי מלאי רשתי מתומחר (בזמן אמת)</div>
+      <div class="kpi-value" id="kpiTotalVal">₪0.00</div>
+      <div class="kpi-sub" id="kpiHerzliyaShare">מתעדכן אוטומטית בכל תנועת מלאי</div>
+    </div>
+    <div class="kpi-card success">
+      <div class="kpi-label">סה"כ יחידות פיזיות ברשת</div>
+      <div class="kpi-value" id="kpiTotalQty">0</div>
+      <div class="kpi-sub" id="kpiSplitSub">הרצליה מול סניפים</div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label">מק"טים בקטלוג (פעילים / אפס)</div>
+      <div class="kpi-value" id="kpiSkuCounts">0 / 0</div>
+      <div class="kpi-sub" id="kpiZeroPct">לחץ על כפתורי הסינון למיקוד</div>
+    </div>
+    <div class="kpi-card indigo">
+      <div class="kpi-label">תנועות מלאי שנרשמו ביומן</div>
+      <div class="kpi-value" id="kpiLogCount">0</div>
+      <div class="kpi-sub" id="kpiLastAction">לא בוצעו שינויים בסשן הנוכחי</div>
+    </div>
+  </section>
+
+  <!-- Navigation Tabs -->
+  <nav class="nav-tabs">
+    <button class="tab-btn active" onclick="switchTab('tab-manage', this)">
+      ⚡ ניהול מלאי חי — כל הקטלוג
+      <span class="badge-cnt" id="tabCntTotal">310</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('tab-logs', this)">
+      📋 יומן תנועות מלאי והיסטוריה
+      <span class="badge-cnt" id="tabCntLogs">0</span>
+    </button>
+    <button class="tab-btn" onclick="switchTab('tab-sites-summary', this)">
+      🏢 סיכום אתרים בזמן אמת
+      <span class="badge-cnt">9 אתרים</span>
+    </button>
+  </nav>
+
+  <!-- TAB 1: LIVE INVENTORY MANAGEMENT -->
+  <section id="tab-manage" class="tab-panel active">
+    <div class="toolbar">
+      <div class="filter-group">
+        <input type="text" id="searchInput" class="search-input" placeholder="חיפוש לפי מק״ט, תיאור או דגם (לדוגמה: CDXL, 003-, Blower)..." oninput="renderTable()">
+        
+        <select id="catFilter" class="select-input" onchange="renderTable()">
+          <option value="ALL">כל הקטגוריות</option>
+          <option value="Equipment & Parts">ציוד וחלפים (Equipment & Parts)</option>
+          <option value="Lamps">נורות הקרנה (Lamps)</option>
+          <option value="Popcorn">חלפי פופקורן (Popcorn)</option>
+        </select>
+
+        <select id="siteFilter" class="select-input" onchange="renderTable()">
+          <option value="ALL">כל האתרים</option>
+          <option value="herzliya">קיים במחסן הרצליה</option>
+          <option value="rishon">קיים בראשון לציון</option>
+          <option value="zichron">קיים בזכרון יעקב</option>
+          <option value="jerusalem">קיים בירושלים</option>
+          <option value="ayalon">קיים באיילון</option>
+          <option value="haifa">קיים בחיפה</option>
+          <option value="beerSheva">קיים בבאר שבע</option>
+          <option value="dizengoff">קיים בדיזנגוף</option>
+          <option value="givatayim">קיים בגבעתיים</option>
+        </select>
+
+        <div class="pill-group">
+          <button class="pill-btn active" id="btnFilterAll" onclick="setStockFilter('ALL')">הכל</button>
+          <button class="pill-btn" id="btnFilterPos" onclick="setStockFilter('POS')">במלאי > 0</button>
+          <button class="pill-btn" id="btnFilterZero" onclick="setStockFilter('ZERO')">מלאי 0</button>
+        </div>
+      </div>
+
+      <div style="font-size:12px; color:var(--text-secondary); display:flex; gap:14px; align-items:center;">
+        <span>מוצגים: <strong id="filteredCount" class="mono" style="color:var(--accent)">0</strong></span>
+        <span>יחידות בחתך: <strong id="filteredQty" class="mono" style="color:var(--accent)">0</strong></span>
+        <span>שווי חתך: <strong id="filteredVal" class="mono" style="color:var(--accent)">₪0.00</strong></span>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th onclick="setSort('id')"># ↕</th>
+            <th onclick="setSort('category')">קטגוריה ↕</th>
+            <th onclick="setSort('partNo')">מק"ט / דגם ↕</th>
+            <th onclick="setSort('description')">תיאור פריט ↕</th>
+            <th onclick="setSort('herzliya')" style="text-align:center;">הרצליה ↕</th>
+            <th onclick="setSort('jerusalem')" style="text-align:center;">ירושלים ↕</th>
+            <th onclick="setSort('beerSheva')" style="text-align:center;">ב"ש ↕</th>
+            <th onclick="setSort('zichron')" style="text-align:center;">זכרון ↕</th>
+            <th onclick="setSort('haifa')" style="text-align:center;">חיפה ↕</th>
+            <th onclick="setSort('rishon')" style="text-align:center;">ראשל"צ ↕</th>
+            <th onclick="setSort('ayalon')" style="text-align:center;">איילון ↕</th>
+            <th onclick="setSort('givatayim')" style="text-align:center;">גבעתיים ↕</th>
+            <th onclick="setSort('dizengoff')" style="text-align:center;">דיזנגוף ↕</th>
+            <th onclick="setSort('totalQty')" style="text-align:center;">סה"כ ↕</th>
+            <th onclick="setSort('unitPrice')" style="text-align:left;">מחיר יח' ↕</th>
+            <th onclick="setSort('inventoryValue')" style="text-align:left;">שווי כולל ↕</th>
+            <th style="text-align:center;">פעולות</th>
+          </tr>
+        </thead>
+        <tbody id="inventoryBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TAB 2: TRANSACTION & AUDIT LOG -->
+  <section id="tab-logs" class="tab-panel">
+    <div class="toolbar">
+      <div class="filter-group">
+        <h3 style="font-size:15px;">יומן תנועות מלאי בזמן אמת (Audit Trail)</h3>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button class="btn" onclick="undoLastAction()">↩ בטל פעולה אחרונה (Undo)</button>
+        <button class="btn btn-danger" onclick="clearLogs()">🗑️ נקה יומן</button>
+      </div>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>תאריך ושעה</th>
+            <th>מבצע</th>
+            <th>סוג פעולה</th>
+            <th>מק"ט</th>
+            <th>תיאור פריט</th>
+            <th>אתר / סניף</th>
+            <th style="text-align:center;">שינוי</th>
+            <th style="text-align:center;">יתרה חדשה</th>
+            <th>הערה / סיבה</th>
+          </tr>
+        </thead>
+        <tbody id="logsBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- TAB 3: LIVE SITES SUMMARY -->
+  <section id="tab-sites-summary" class="tab-panel">
+    <div class="table-wrap" style="padding:16px;">
+      <h3 style="margin-bottom:14px; font-size:15px;">ריכוז כמות ושווי מלאי בזמן אמת לפי אתרים</h3>
+      <table>
+        <thead>
+          <tr>
+            <th>אתר / מחסן</th>
+            <th style="text-align:center;">מק"טים פעילים באתר (>0)</th>
+            <th style="text-align:center;">סה"כ יחידות פיזיות</th>
+            <th style="text-align:left;">שווי מלאי מתומחר (₪)</th>
+            <th style="text-align:left;">נתח משווי הרשת (%)</th>
+          </tr>
+        </thead>
+        <tbody id="sitesSummaryBody"></tbody>
+      </table>
+    </div>
+  </section>
+</main>
+
+<!-- MODAL 1: QUICK STOCK ADJUSTMENT -->
+<div class="modal-backdrop" id="adjustModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="adjModalTitle">עדכון מלאי בסניף</h3>
+      <button class="modal-close" onclick="closeModal('adjustModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div style="background:var(--bg-input); padding:10px 14px; border-radius:8px; border:1px solid var(--border-highlight);">
+        <div class="mono" style="color:var(--accent); font-weight:700;" id="adjPartNo"></div>
+        <div style="font-size:14px; font-weight:600;" id="adjDesc"></div>
+        <div style="font-size:12px; color:var(--text-secondary); margin-top:4px;">אתר: <strong id="adjSiteName" style="color:#fff;"></strong> | כמות נוכחית: <strong id="adjCurrentQty" class="mono" style="color:#34d399;"></strong></div>
+      </div>
+
+      <div class="form-grid-2">
+        <div class="form-row">
+          <label>כמות חדשה באתר:</label>
+          <input type="number" id="adjNewQtyInput" class="form-input mono" min="0" style="font-size:16px; font-weight:700;">
+        </div>
+        <div class="form-row">
+          <label>סיבת תנועה:</label>
+          <select id="adjReasonSelect" class="select-input">
+            <option value="משיכה להתקנה / תיקון">🔧 משיכה להתקנה / תיקון</option>
+            <option value="קבלת סחורה מספק">📦 קבלת סחורה מספק</option>
+            <option value="עדכון ספירת מלאי">📋 עדכון ספירת מלאי</option>
+            <option value="השבתה / תקלה">⚠️ השבתה / תקלה</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-row">
+        <label>הערה ליומן (אופציונלי — למשל מספר אולם או מספר תעודה):</label>
+        <input type="text" id="adjNoteInput" class="form-input" placeholder="לדוגמה: הותקן באולם 4 מקרן Barco...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('adjustModal')">ביטול</button>
+      <button class="btn btn-primary" onclick="confirmAdjustStock()">שמור עדכון מלאי</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 2: TRANSFER BETWEEN SITES -->
+<div class="modal-backdrop" id="transferModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>⇄ העברת מלאי בין אתרים (ניפוק פנימי)</h3>
+      <button class="modal-close" onclick="closeModal('transferModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-row">
+        <label>בחר פריט (מק"ט — תיאור):</label>
+        <select id="trItemSelect" class="select-input" onchange="updateTransferAvailability()"></select>
+      </div>
+      <div class="form-grid-3">
+        <div class="form-row">
+          <label>מאתר מקור:</label>
+          <select id="trFromSite" class="select-input" onchange="updateTransferAvailability()"></select>
+        </div>
+        <div class="form-row">
+          <label>לאתר יעד:</label>
+          <select id="trToSite" class="select-input"></select>
+        </div>
+        <div class="form-row">
+          <label>כמות להעברה:</label>
+          <input type="number" id="trQtyInput" class="form-input mono" min="1" value="1">
+        </div>
+      </div>
+      <div id="trAvailInfo" style="font-size:12px; color:var(--text-secondary);"></div>
+      <div class="form-row">
+        <label>הערת משלוח / העברה:</label>
+        <input type="text" id="trNoteInput" class="form-input" placeholder="לדוגמה: נשלח עם שליח עבור הקרנת בכורה...">
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('transferModal')">ביטול</button>
+      <button class="btn btn-indigo" onclick="confirmTransfer()">בצע העברת מלאי</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL 3: ADD / EDIT ITEM -->
+<div class="modal-backdrop" id="itemModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3 id="itemModalTitle">הוספת פריט חדש לקטלוג</h3>
+      <button class="modal-close" onclick="closeModal('itemModal')">✕</button>
+    </div>
+    <div class="modal-body">
+      <input type="hidden" id="editItemId">
+      <div class="form-grid-2">
+        <div class="form-row">
+          <label>קטגוריה:</label>
+          <select id="itemCatInput" class="select-input">
+            <option value="Equipment & Parts">ציוד וחלפים (Equipment & Parts)</option>
+            <option value="Lamps">נורות הקרנה (Lamps)</option>
+            <option value="Popcorn">חלפי פופקורן (Popcorn)</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <label>מק"ט / דגם:</label>
+          <input type="text" id="itemPartNoInput" class="form-input mono" placeholder="לדוגמה: 003-120508-02">
+        </div>
+      </div>
+      <div class="form-grid-2">
+        <div class="form-row">
+          <label>תיאור פריט:</label>
+          <input type="text" id="itemDescInput" class="form-input" placeholder="שם החלק...">
+        </div>
+        <div class="form-row">
+          <label>מחיר יחידה קובע (₪):</label>
+          <input type="number" id="itemPriceInput" class="form-input mono" step="0.01" min="0" value="0">
+        </div>
+      </div>
+      <div id="newItemInitialStockBox" class="form-grid-3" style="border-top:1px solid var(--border-highlight); padding-top:10px;">
+        <div class="form-row">
+          <label>מלאי פתיחה הרצליה:</label>
+          <input type="number" id="initHerzliya" class="form-input mono" min="0" value="0">
+        </div>
+        <div class="form-row">
+          <label>מלאי פתיחה ראשל"צ:</label>
+          <input type="number" id="initRishon" class="form-input mono" min="0" value="0">
+        </div>
+        <div class="form-row">
+          <label>מלאי פתיחה ירושלים:</label>
+          <input type="number" id="initJerusalem" class="form-input mono" min="0" value="0">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn" onclick="closeModal('itemModal')">ביטול</button>
+      <button class="btn btn-primary" onclick="saveItemModal()">שמור פריט</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast">עודכן בהצלחה</div>
+
+<script>
+// Compact binary seed (gzipped base64) so code remains clean while working offline out-of-the-box
+const SEED_B64 = "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";
+
+const SITES = [
+  { key: 'herzliya', label: 'מחסן הרצליה', short: 'הרצליה' },
+  { key: 'jerusalem', label: 'ירושלים', short: 'ירושלים' },
+  { key: 'beerSheva', label: 'באר שבע', short: 'ב"ש' },
+  { key: 'zichron', label: 'זכרון יעקב', short: 'זכרון' },
+  { key: 'haifa', label: 'חיפה', short: 'חיפה' },
+  { key: 'rishon', label: 'ראשון לציון', short: 'ראשל"צ' },
+  { key: 'ayalon', label: 'איילון', short: 'איילון' },
+  { key: 'givatayim', label: 'גבעתיים', short: 'גבעתיים' },
+  { key: 'dizengoff', label: 'דיזנגוף', short: 'דיזנגוף' }
+];
+
+const DB_KEY = 'PLANET_INVENTORY_V2_ITEMS';
+const LOG_KEY = 'PLANET_INVENTORY_V2_LOGS';
+const USER_KEY = 'PLANET_INVENTORY_V2_USER';
+
+let dbItems = [];
+let dbLogs = [];
+let stockFilterMode = 'ALL';
+let sortField = 'id';
+let sortAsc = true;
+let activeAdjContext = null;
+
+async function decompressSeed(b64) {
+  const binStr = atob(b64);
+  const bytes = new Uint8Array(binStr.length);
+  for (let i = 0; i < binStr.length; i++) bytes[i] = binStr.charCodeAt(i);
+  const ds = new DecompressionStream('gzip');
+  const writer = ds.writable.getWriter();
+  writer.write(bytes);
+  writer.close();
+  const resp = new Response(ds.readable);
+  const text = await resp.text();
+  return JSON.parse(text);
+}
+
+function recalcItem(item) {
+  let sum = 0;
+  for (const s of SITES) {
+    item[s.key] = Math.max(0, parseInt(item[s.key] || 0, 10));
+    sum += item[s.key];
+  }
+  item.totalQty = sum;
+  item.unitPrice = parseFloat(item.unitPrice || 0);
+  item.inventoryValue = +(item.totalQty * item.unitPrice).toFixed(2);
+  return item;
+}
+
+async function initApp() {
+  const savedUser = localStorage.getItem(USER_KEY);
+  if (savedUser) document.getElementById('activeUserSelect').value = savedUser;
+
+  const savedLogs = localStorage.getItem(LOG_KEY);
+  if (savedLogs) {
+    try { dbLogs = JSON.parse(savedLogs); } catch(e) { dbLogs = []; }
+  }
+
+  const savedItems = localStorage.getItem(DB_KEY);
+  if (savedItems) {
+    try {
+      dbItems = JSON.parse(savedItems).map(recalcItem);
+    } catch(e) {
+      dbItems = (await decompressSeed(SEED_B64)).map(recalcItem);
+    }
+  } else {
+    dbItems = (await decompressSeed(SEED_B64)).map(recalcItem);
+    saveDB();
+  }
+
+  populateTransferSelectors();
+  refreshAllViews();
+}
+
+function saveDB() {
+  localStorage.setItem(DB_KEY, JSON.stringify(dbItems));
+  localStorage.setItem(LOG_KEY, JSON.stringify(dbLogs));
+}
+
+function saveUserPref() {
+  localStorage.setItem(USER_KEY, document.getElementById('activeUserSelect').value);
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function fmtILS(n) {
+  return '₪' + Number(n || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function getCatBadge(cat) {
+  if (cat === 'Equipment & Parts') return '<span class="cat-badge cat-equip">ציוד וחלפים</span>';
+  if (cat === 'Lamps') return '<span class="cat-badge cat-lamps">נורות הקרנה</span>';
+  if (cat === 'Popcorn') return '<span class="cat-badge cat-popcorn">חלפי פופקורן</span>';
+  return `<span class="cat-badge">${cat}</span>`;
+}
+
+// Instant +1 / -1 button handler
+function quickStep(itemId, siteKey, delta) {
+  const item = dbItems.find(x => x.id === itemId);
+  if (!item) return;
+  const oldQty = item[siteKey] || 0;
+  const newQty = Math.max(0, oldQty + delta);
+  if (newQty === oldQty) return;
+
+  item[siteKey] = newQty;
+  item._modified = true;
+  recalcItem(item);
+
+  const siteObj = SITES.find(s => s.key === siteKey);
+  recordLog({
+    action: delta > 0 ? 'הוספה מהירה (+)' : 'הורדה מהירה (-)',
+    itemId: item.id,
+    partNo: item.partNo,
+    description: item.description,
+    siteKey: siteKey,
+    siteLabel: siteObj ? siteObj.label : siteKey,
+    oldQty: oldQty,
+    newQty: newQty,
+    delta: newQty - oldQty,
+    note: 'עדכון מהיר מהטבלה'
+  });
+
+  saveDB();
+  refreshAllViews();
+  showToast(`${item.partNo} (${siteObj.short}): ${oldQty} ← ${newQty}`);
+}
+
+// Open modal for exact quantity adjustment with reason & note
+function openAdjustModal(itemId, siteKey) {
+  const item = dbItems.find(x => x.id === itemId);
+  if (!item) return;
+  const siteObj = SITES.find(s => s.key === siteKey);
+  activeAdjContext = { itemId, siteKey };
+
+  document.getElementById('adjPartNo').textContent = item.partNo;
+  document.getElementById('adjDesc').textContent = item.description;
+  document.getElementById('adjSiteName').textContent = siteObj.label;
+  document.getElementById('adjCurrentQty').textContent = item[siteKey];
+  document.getElementById('adjNewQtyInput').value = item[siteKey];
+  document.getElementById('adjNoteInput').value = '';
+  document.getElementById('adjustModal').classList.add('open');
+  setTimeout(() => document.getElementById('adjNewQtyInput').select(), 60);
+}
+
+function confirmAdjustStock() {
+  if (!activeAdjContext) return;
+  const item = dbItems.find(x => x.id === activeAdjContext.itemId);
+  if (!item) return;
+  const siteKey = activeAdjContext.siteKey;
+  const siteObj = SITES.find(s => s.key === siteKey);
+  const oldQty = item[siteKey] || 0;
+  const newQty = Math.max(0, parseInt(document.getElementById('adjNewQtyInput').value || 0, 10));
+  const reason = document.getElementById('adjReasonSelect').value;
+  const note = document.getElementById('adjNoteInput').value.trim();
+
+  if (oldQty === newQty && !note) {
+    closeModal('adjustModal');
+    return;
+  }
+
+  item[siteKey] = newQty;
+  item._modified = true;
+  recalcItem(item);
+
+  recordLog({
+    action: reason,
+    itemId: item.id,
+    partNo: item.partNo,
+    description: item.description,
+    siteKey: siteKey,
+    siteLabel: siteObj.label,
+    oldQty: oldQty,
+    newQty: newQty,
+    delta: newQty - oldQty,
+    note: note || reason
+  });
+
+  saveDB();
+  closeModal('adjustModal');
+  refreshAllViews();
+  showToast(`עודכן מלאי ${item.partNo} ב-${siteObj.short}: ${newQty} יח'`);
+}
+
+function recordLog(entry) {
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const ts = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  dbLogs.unshift({
+    id: Date.now() + Math.random(),
+    timestamp: ts,
+    user: document.getElementById('activeUserSelect').value,
+    ...entry
+  });
+}
+
+function undoLastAction() {
+  if (dbLogs.length === 0) {
+    showToast('אין פעולות לביטול ביומן');
+    return;
+  }
+  const last = dbLogs.shift();
+  if (last.type === 'TRANSFER') {
+    const item = dbItems.find(x => x.id === last.itemId);
+    if (item) {
+      item[last.fromKey] = last.fromOldQty;
+      item[last.toKey] = last.toOldQty;
+      recalcItem(item);
+    }
+  } else if (last.siteKey) {
+    const item = dbItems.find(x => x.id === last.itemId);
+    if (item) {
+      item[last.siteKey] = last.oldQty;
+      recalcItem(item);
+    }
+  }
+  saveDB();
+  refreshAllViews();
+  showToast(`בוטלה פעולה אחרונה (${last.partNo})`);
+}
+
+function clearLogs() {
+  if (!confirm('האם למחוק את היסטוריית התנועות ביומן?')) return;
+  dbLogs = [];
+  saveDB();
+  refreshAllViews();
+}
+
+// Stock Transfer Modal
+function populateTransferSelectors() {
+  const fromSel = document.getElementById('trFromSite');
+  const toSel = document.getElementById('trToSite');
+  fromSel.innerHTML = SITES.map(s => `<option value="${s.key}">${s.label}</option>`).join('');
+  toSel.innerHTML = SITES.map((s, idx) => `<option value="${s.key}" ${idx===5?'selected':''}>${s.label}</option>`).join('');
+}
+
+function openTransferModal(preselectItemId = null) {
+  const itemSel = document.getElementById('trItemSelect');
+  itemSel.innerHTML = dbItems.map(i => `<option value="${i.id}">[${i.partNo}] ${i.description} (סה"כ: ${i.totalQty})</option>`).join('');
+  if (preselectItemId) itemSel.value = preselectItemId;
+  document.getElementById('trQtyInput').value = 1;
+  document.getElementById('trNoteInput').value = '';
+  updateTransferAvailability();
+  document.getElementById('transferModal').classList.add('open');
+}
+
+function updateTransferAvailability() {
+  const itemId = parseInt(document.getElementById('trItemSelect').value, 10);
+  const fromKey = document.getElementById('trFromSite').value;
+  const item = dbItems.find(x => x.id === itemId);
+  const avail = item ? (item[fromKey] || 0) : 0;
+  const infoEl = document.getElementById('trAvailInfo');
+  infoEl.innerHTML = `יתרה זמינה באתר המקור: <strong class="mono" style="color:${avail>0?'#34d399':'#ef4444'}">${avail} יחידות</strong>`;
+}
+
+function confirmTransfer() {
+  const itemId = parseInt(document.getElementById('trItemSelect').value, 10);
+  const fromKey = document.getElementById('trFromSite').value;
+  const toKey = document.getElementById('trToSite').value;
+  const qty = parseInt(document.getElementById('trQtyInput').value || 0, 10);
+  const note = document.getElementById('trNoteInput').value.trim();
+
+  if (fromKey === toKey) {
+    alert('אתר המקור ואתר היעד חייבים להיות שונים.');
+    return;
+  }
+  const item = dbItems.find(x => x.id === itemId);
+  if (!item || qty <= 0) return;
+  if ((item[fromKey] || 0) < qty) {
+    alert(`אין מספיק מלאי באתר המקור! יתרה נוכחית: ${item[fromKey] || 0}`);
+    return;
+  }
+
+  const fromOld = item[fromKey];
+  const toOld = item[toKey];
+  item[fromKey] -= qty;
+  item[toKey] += qty;
+  item._modified = true;
+  recalcItem(item);
+
+  const fromLabel = SITES.find(s => s.key === fromKey).short;
+  const toLabel = SITES.find(s => s.key === toKey).short;
+
+  recordLog({
+    type: 'TRANSFER',
+    action: 'העברה בין סניפים',
+    itemId: item.id,
+    partNo: item.partNo,
+    description: item.description,
+    fromKey, toKey,
+    fromOldQty: fromOld,
+    toOldQty: toOld,
+    siteLabel: `${fromLabel} ⬅ ${toLabel}`,
+    delta: qty,
+    newQty: `${item[fromKey]} / ${item[toKey]}`,
+    note: note || `הועברו ${qty} יח' מ-${fromLabel} ל-${toLabel}`
+  });
+
+  saveDB();
+  closeModal('transferModal');
+  refreshAllViews();
+  showToast(`הועברו ${qty} יח' (${item.partNo}) מ-${fromLabel} ל-${toLabel}`);
+}
+
+// Add / Edit SKU Modal
+function openAddItemModal() {
+  document.getElementById('editItemId').value = '';
+  document.getElementById('itemModalTitle').textContent = '➕ הוספת פריט חדש לקטלוג';
+  document.getElementById('itemPartNoInput').value = '';
+  document.getElementById('itemDescInput').value = '';
+  document.getElementById('itemPriceInput').value = 0;
+  document.getElementById('initHerzliya').value = 0;
+  document.getElementById('initRishon').value = 0;
+  document.getElementById('initJerusalem').value = 0;
+  document.getElementById('newItemInitialStockBox').style.display = 'grid';
+  document.getElementById('itemModal').classList.add('open');
+}
+
+function openEditItemModal(itemId) {
+  const item = dbItems.find(x => x.id === itemId);
+  if (!item) return;
+  document.getElementById('editItemId').value = item.id;
+  document.getElementById('itemModalTitle').textContent = `✏️ עריכת פריט #${item.id}`;
+  document.getElementById('itemCatInput').value = item.category;
+  document.getElementById('itemPartNoInput').value = item.partNo;
+  document.getElementById('itemDescInput').value = item.description;
+  document.getElementById('itemPriceInput').value = item.unitPrice;
+  document.getElementById('newItemInitialStockBox').style.display = 'none';
+  document.getElementById('itemModal').classList.add('open');
+}
+
+function saveItemModal() {
+  const editId = document.getElementById('editItemId').value;
+  const cat = document.getElementById('itemCatInput').value;
+  const partNo = document.getElementById('itemPartNoInput').value.trim() || 'ללא מק"ט';
+  const desc = document.getElementById('itemDescInput').value.trim() || 'פריט ללא שם';
+  const price = parseFloat(document.getElementById('itemPriceInput').value || 0);
+
+  if (editId) {
+    const item = dbItems.find(x => x.id === parseInt(editId, 10));
+    if (item) {
+      item.category = cat;
+      item.partNo = partNo;
+      item.description = desc;
+      item.unitPrice = price;
+      item._modified = true;
+      recalcItem(item);
+      recordLog({
+        action: 'עריכת פרטי מק"ט/מחיר',
+        itemId: item.id,
+        partNo: item.partNo,
+        description: item.description,
+        siteLabel: 'קטלוג ראשי',
+        delta: 0,
+        newQty: item.totalQty,
+        note: `מחיר יחידה: ₪${price}`
+      });
+    }
+  } else {
+    const newId = dbItems.reduce((m, x) => Math.max(m, x.id), 0) + 1;
+    const newItem = {
+      id: newId,
+      category: cat,
+      partNo: partNo,
+      description: desc,
+      unitPrice: price,
+      herzliya: parseInt(document.getElementById('initHerzliya').value || 0, 10),
+      rishon: parseInt(document.getElementById('initRishon').value || 0, 10),
+      jerusalem: parseInt(document.getElementById('initJerusalem').value || 0, 10),
+      beerSheva: 0, zichron: 0, haifa: 0, ayalon: 0, givatayim: 0, dizengoff: 0,
+      _modified: true
+    };
+    recalcItem(newItem);
+    dbItems.unshift(newItem);
+    recordLog({
+      action: 'הוספת מק"ט חדש',
+      itemId: newItem.id,
+      partNo: newItem.partNo,
+      description: newItem.description,
+      siteLabel: 'קטלוג ראשי',
+      delta: newItem.totalQty,
+      newQty: newItem.totalQty,
+      note: 'נוסף ידנית למערכת'
+    });
+  }
+
+  saveDB();
+  closeModal('itemModal');
+  refreshAllViews();
+  showToast('הפריט נשמר בהצלחה');
+}
+
+function deleteItem(itemId) {
+  const item = dbItems.find(x => x.id === itemId);
+  if (!item) return;
+  if (!confirm(`האם למחוק את הפריט "${item.partNo} - ${item.description}" מהקטלוג?`)) return;
+  dbItems = dbItems.filter(x => x.id !== itemId);
+  recordLog({
+    action: 'מחיקת פריט',
+    itemId: item.id,
+    partNo: item.partNo,
+    description: item.description,
+    siteLabel: 'כלל רשתי',
+    delta: -item.totalQty,
+    newQty: 0,
+    note: 'נמחק מהקטלוג'
+  });
+  saveDB();
+  refreshAllViews();
+  showToast('הפריט נמחק');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+}
+
+function switchTab(tabId, btn) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  btn.classList.add('active');
+}
+
+function setStockFilter(mode) {
+  stockFilterMode = mode;
+  document.getElementById('btnFilterAll').classList.toggle('active', mode === 'ALL');
+  document.getElementById('btnFilterPos').classList.toggle('active', mode === 'POS');
+  document.getElementById('btnFilterZero').classList.toggle('active', mode === 'ZERO');
+  renderTable();
+}
+
+function setSort(col) {
+  if (sortField === col) sortAsc = !sortAsc;
+  else {
+    sortField = col;
+    sortAsc = ['id','partNo','description','category'].includes(col);
+  }
+  renderTable();
+}
+
+function getFilteredItems() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const cat = document.getElementById('catFilter').value;
+  const site = document.getElementById('siteFilter').value;
+
+  return dbItems.filter(item => {
+    if (cat !== 'ALL' && item.category !== cat) return false;
+    if (site !== 'ALL' && !(item[site] > 0)) return false;
+    if (stockFilterMode === 'POS' && item.totalQty <= 0) return false;
+    if (stockFilterMode === 'ZERO' && item.totalQty > 0) return false;
+    if (q) {
+      const hay = `${item.partNo} ${item.description} ${item.category}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  }).sort((a, b) => {
+    const va = a[sortField];
+    const vb = b[sortField];
+    if (typeof va === 'string') return sortAsc ? va.localeCompare(vb) : vb.localeCompare(va);
+    return sortAsc ? (va - vb) : (vb - va);
+  });
+}
+
+function renderTable() {
+  const rows = getFilteredItems();
+  let sumQ = 0;
+  let sumV = 0;
+
+  const html = rows.map(r => {
+    sumQ += r.totalQty;
+    sumV += r.inventoryValue;
+    const trClass = [
+      r.totalQty === 0 ? 'zero-row' : '',
+      r._modified ? 'modified-row' : ''
+    ].filter(Boolean).join(' ');
+
+    const siteCells = SITES.map(s => {
+      const val = r[s.key] || 0;
+      const numClass = val > 0 ? 'pos' : 'zero';
+      return `<td style="text-align:center;">
+        <div class="qty-box">
+          <button class="qty-btn plus" onclick="quickStep(${r.id}, '${s.key}', 1)" title="הוסף 1 ב-${s.short}">+</button>
+          <span class="qty-num ${numClass}" onclick="openAdjustModal(${r.id}, '${s.key}')" title="לחץ לעדכון מדויק והוספת הערה ב-${s.short}">${val}</span>
+          <button class="qty-btn minus" onclick="quickStep(${r.id}, '${s.key}', -1)" title="הורד 1 ב-${s.short}">-</button>
+        </div>
+      </td>`;
+    }).join('');
+
+    const safePart = r.partNo.replace(/'/g, "\'");
+
+    return `<tr class="${trClass}">
+      <td class="mono" style="color:var(--text-muted);">${r.id}</td>
+      <td>${getCatBadge(r.category)}</td>
+      <td><span class="part-chip" onclick="navigator.clipboard.writeText('${safePart}');showToast('הועתק: ${safePart}')">${r.partNo}</span></td>
+      <td style="font-weight:500;">${r.description}</td>
+      ${siteCells}
+      <td style="text-align:center;"><span class="total-pill ${r.totalQty>0?'pos':'zero'}">${r.totalQty}</span></td>
+      <td class="val-ltr" style="color:var(--text-secondary);">${fmtILS(r.unitPrice)}</td>
+      <td class="val-ltr">${fmtILS(r.inventoryValue)}</td>
+      <td>
+        <div class="row-actions">
+          <button class="icon-btn" onclick="openTransferModal(${r.id})" title="העבר בין סניפים">⇄</button>
+          <button class="icon-btn" onclick="openEditItemModal(${r.id})" title="ערוך מק״ט / מחיר">✏️</button>
+          <button class="icon-btn" onclick="deleteItem(${r.id})" title="מחק פריט">🗑️</button>
+        </div>
+      </td>
+    </tr>`;
+  }).join('');
+
+  document.getElementById('inventoryBody').innerHTML = html;
+  document.getElementById('filteredCount').textContent = rows.length;
+  document.getElementById('filteredQty').textContent = sumQ.toLocaleString();
+  document.getElementById('filteredVal').textContent = fmtILS(sumV);
+}
+
+function renderKPIsAndSummaries() {
+  let totalVal = 0;
+  let totalQty = 0;
+  let herzQty = 0;
+  let herzVal = 0;
+  let activeSkus = 0;
+
+  const siteStats = {};
+  SITES.forEach(s => siteStats[s.key] = { label: s.label, skus: 0, qty: 0, val: 0 });
+
+  dbItems.forEach(item => {
+    totalQty += item.totalQty;
+    totalVal += item.inventoryValue;
+    if (item.totalQty > 0) activeSkus++;
+    herzQty += item.herzliya;
+    herzVal += item.herzliya * item.unitPrice;
+
+    SITES.forEach(s => {
+      const q = item[s.key] || 0;
+      if (q > 0) {
+        siteStats[s.key].skus++;
+        siteStats[s.key].qty += q;
+        siteStats[s.key].val += q * item.unitPrice;
+      }
+    });
+  });
+
+  const zeroSkus = dbItems.length - activeSkus;
+  const hShare = totalVal > 0 ? ((herzVal / totalVal) * 100).toFixed(1) : '0.0';
+
+  document.getElementById('kpiTotalVal').textContent = fmtILS(totalVal);
+  document.getElementById('kpiHerzliyaShare').textContent = `${hShare}% מהשווי במחסן הרצליה (${fmtILS(herzVal)})`;
+  document.getElementById('kpiTotalQty').textContent = totalQty.toLocaleString();
+  document.getElementById('kpiSplitSub').textContent = `${herzQty} בהרצליה | ${totalQty - herzQty} ב-8 סניפים`;
+  document.getElementById('kpiSkuCounts').textContent = `${activeSkus} / ${dbItems.length}`;
+  document.getElementById('kpiZeroPct').textContent = `${zeroSkus} מק"טים במלאי אפס`;
+  document.getElementById('kpiLogCount').textContent = dbLogs.length;
+  document.getElementById('kpiLastAction').textContent = dbLogs.length > 0
+    ? `אחרון: ${dbLogs[0].partNo} (${dbLogs[0].siteLabel})`
+    : 'לא בוצעו שינויים בסשן הנוכחי';
+
+  document.getElementById('tabCntTotal').textContent = dbItems.length;
+  document.getElementById('tabCntLogs').textContent = dbLogs.length;
+
+  // Render logs table
+  document.getElementById('logsBody').innerHTML = dbLogs.length === 0
+    ? `<tr><td colspan="9" style="text-align:center; padding:24px; color:var(--text-muted);">טרם נרשמו תנועות מלאי. השתמש בכפתורי ה-+/- בטבלה או בהעברה בין סניפים.</td></tr>`
+    : dbLogs.map(l => {
+        const deltaStr = l.delta > 0 ? `<span style="color:#34d399;font-weight:700;">+${l.delta}</span>` : `<span style="color:#f87171;font-weight:700;">${l.delta}</span>`;
+        return `<tr>
+          <td class="mono">${l.timestamp}</td>
+          <td>${l.user}</td>
+          <td><span class="cat-badge cat-equip">${l.action}</span></td>
+          <td class="mono">${l.partNo}</td>
+          <td>${l.description}</td>
+          <td style="font-weight:600;">${l.siteLabel}</td>
+          <td style="text-align:center;" class="mono">${deltaStr}</td>
+          <td style="text-align:center;" class="mono">${l.newQty}</td>
+          <td style="color:var(--text-secondary);">${l.note || '—'}</td>
+        </tr>`;
+      }).join('');
+
+  // Render sites summary
+  const sortedSites = Object.values(siteStats).sort((a,b) => b.val - a.val);
+  document.getElementById('sitesSummaryBody').innerHTML = sortedSites.map(s => {
+    const pct = totalVal > 0 ? ((s.val / totalVal) * 100).toFixed(1) : '0.0';
+    return `<tr>
+      <td style="font-weight:700;">${s.label}</td>
+      <td style="text-align:center;" class="mono">${s.skus}</td>
+      <td style="text-align:center;" class="mono"><span class="total-pill pos">${s.qty}</span></td>
+      <td class="val-ltr">${fmtILS(s.val)}</td>
+      <td class="val-ltr">${pct}%</td>
+    </tr>`;
+  }).join('');
+}
+
+function refreshAllViews() {
+  renderTable();
+  renderKPIsAndSummaries();
+}
+
+// Export / Import / Reset
+function exportStateJSON() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    exportedBy: document.getElementById('activeUserSelect').value,
+    items: dbItems,
+    logs: dbLogs
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Planet_Inventory_State_${new Date().toISOString().slice(0,10)}.json`;
+  a.click();
+  showToast('קובץ מצב JSON נשמר');
+}
+
+function exportToExcelCSV() {
+  const rows = getFilteredItems();
+  const headers = ['ID','Category','PartNo','Description','Herzliya','Jerusalem','BeerSheva','Zichron','Haifa','RishonLeZion','Ayalon','Givatayim','Dizengoff','TotalQty','UnitPriceILS','InventoryValueILS'];
+  const lines = [headers.join(',')];
+  rows.forEach(r => {
+    lines.push([
+      r.id,
+      `"${r.category}"`,
+      `"${String(r.partNo).replace(/"/g, '""')}"`,
+      `"${String(r.description).replace(/"/g, '""')}"`,
+      r.herzliya, r.jerusalem, r.beerSheva, r.zichron, r.haifa, r.rishon, r.ayalon, r.givatayim, r.dizengoff,
+      r.totalQty, r.unitPrice, r.inventoryValue
+    ].join(','));
+  });
+  const blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `Planet_Inventory_Updated_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  showToast('קובץ CSV לאקסל יוצא בהצלחה');
+}
+
+function handleExternalFile(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+
+  if (file.name.endsWith('.json')) {
+    reader.onload = e => {
+      try {
+        const data = JSON.parse(e.target.result);
+        if (Array.isArray(data.items)) {
+          dbItems = data.items.map(recalcItem);
+          if (Array.isArray(data.logs)) dbLogs = data.logs;
+          saveDB();
+          refreshAllViews();
+          showToast('קובץ מצב JSON נטען בהצלחה!');
+        }
+      } catch(err) { alert('שגיאה בקריאת קובץ ה-JSON'); }
+    };
+    reader.readAsText(file);
+  } else if (typeof XLSX !== 'undefined') {
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array' });
+        const totalSheet = wb.Sheets['TOTAL'] || wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(totalSheet, { header: 1 });
+        const hdrIdx = rows.findIndex(r => r && r[0] === 'Category');
+        if (hdrIdx === -1) { alert('לא נמצאה טבלת TOTAL תקינה בקובץ האקסל.'); return; }
+        const parsed = [];
+        let idCounter = 1;
+        for (let i = hdrIdx + 1; i < rows.length; i++) {
+          const r = rows[i];
+          if (!r || !r[0] || r[0] === 'TOTAL') continue;
+          const tq = parseInt(r[12] || 0, 10);
+          const iv = parseFloat(r[13] || 0);
+          const item = {
+            id: idCounter++,
+            category: String(r[0]).trim(),
+            partNo: r[1] ? String(r[1]).replace(/\n/g, ' / ').trim() : 'ללא מק"ט',
+            description: r[2] ? String(r[2]).trim() : '—',
+            herzliya: parseInt(r[3]||0, 10),
+            jerusalem: parseInt(r[4]||0, 10),
+            beerSheva: parseInt(r[5]||0, 10),
+            zichron: parseInt(r[6]||0, 10),
+            haifa: parseInt(r[7]||0, 10),
+            rishon: parseInt(r[8]||0, 10),
+            ayalon: parseInt(r[9]||0, 10),
+            givatayim: parseInt(r[10]||0, 10),
+            dizengoff: parseInt(r[11]||0, 10),
+            unitPrice: tq > 0 ? +(iv / tq).toFixed(2) : 0
+          };
+          parsed.push(recalcItem(item));
+        }
+        dbItems = parsed;
+        saveDB();
+        refreshAllViews();
+        showToast(`נטענו ${parsed.length} פריטים מקובץ האקסל!`);
+      } catch(err) { alert('שגיאה בטעינת קובץ האקסל: ' + err.message); }
+    };
+    reader.readAsArrayBuffer(file);
+  }
+  ev.target.value = '';
+}
+
+async function resetToFactory() {
+  if (!confirm('האם לאפס את כל שינויי המלאי ולחזור לנתוני קובץ המקור?')) return;
+  localStorage.removeItem(DB_KEY);
+  localStorage.removeItem(LOG_KEY);
+  dbLogs = [];
+  dbItems = (await decompressSeed(SEED_B64)).map(recalcItem);
+  saveDB();
+  refreshAllViews();
+  showToast('הנתונים אופסו למצב המקורי');
+}
+
+initApp();
+</script>
+</body>
+</html>
